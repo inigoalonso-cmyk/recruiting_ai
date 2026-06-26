@@ -1,0 +1,10 @@
+node_modules
+.next
+.env
+.env.local
+*.log
+.DS_Store
+data/embeddings.bin
+data/embeddings-index.json
+data/gen.py
+data/gen2.py

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "fd-france",
+    "label": "Field Director — France",
+    "criteria": "Based in France. Fluent in French and English. 3+ years leading field/operations teams. Comfortable with high-volume, fast-paced environments."
+  },
+  {
+    "id": "product-designer",
+    "label": "Product Designer",
+    "criteria": "Strong product design portfolio (end-to-end, not just UI). Experience shipping B2B or complex SaaS products. Comfortable with ambiguity and fast iteration."
+  },
+  {
+    "id": "backend-eng",
+    "label": "Backend Engineer",
+    "criteria": "Strong backend experience (Python or Node). Built and scaled APIs and data pipelines. Bonus: experience with LLM/AI products."
+  }
+]
