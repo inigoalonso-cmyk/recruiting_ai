@@ -97,20 +97,9 @@ export default function Page() {
 
   return (
     <>
-      <header className="appbar">
-        <div className="logo">
-          {/* Replace this inline mark with the official logo: drop public/logo.svg and use <img src="/logo.svg" height={26} alt="HappyRobot" /> */}
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <rect x="4" y="7" width="16" height="12" rx="4" fill="#4f46e5" />
-            <circle cx="9.5" cy="13" r="1.6" fill="#fff" />
-            <circle cx="14.5" cy="13" r="1.6" fill="#fff" />
-            <rect x="11" y="2.5" width="2" height="3.5" rx="1" fill="#fff" />
-            <circle cx="12" cy="2.5" r="1.6" fill="#4f46e5" stroke="#fff" strokeWidth="1.2" />
-          </svg>
-          <span className="name">HappyRobot</span>
-          <span className="tag">Recruiting</span>
-        </div>
-        <span className="right">Candidate Finder</span>
+      {/* Logo lives in the background image (bg.png), so the top area stays minimal. */}
+      <header className="topbar">
+        <span>Candidate Finder</span>
       </header>
 
       <main className="wrap">
