@@ -9,11 +9,13 @@ type Candidate = {
   location: string;
   languages: string[];
   summary: string;
-  ashbyUrl: string;
+  ashbyUrl: string | null;
   linkedinUrl: string | null;
+  sourceUrl?: string | null;
 };
 type Job = { id: string; title: string };
 type Role = { id: string; label: string; criteria: string };
+type Mode = "internal" | "online";
 
 /** Rotating example prompts, bilingual EN/ES. */
 const EXAMPLES = [
@@ -51,6 +53,7 @@ function seniority(summary: string): Seniority | null {
 
 export default function Page() {
   const [query, setQuery] = useState("");
+  const [mode, setMode] = useState<Mode>("internal");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [jobId, setJobId] = useState("");
   const [roles, setRoles] = useState<Role[]>([]);
@@ -93,11 +96,17 @@ export default function Page() {
     setSelected(new Set());
     const criteria = roles.find((r) => r.id === roleId)?.criteria ?? null;
     try {
-      const res = await fetch("/api/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, jobId: jobId || null, scope, criteria, minMonthsInactive: months || null, limit }),
-      });
+      const res = mode === "online"
+        ? await fetch("/api/discover", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query, limit }),
+          })
+        : await fetch("/api/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query, jobId: jobId || null, scope, criteria, minMonthsInactive: months || null, limit }),
+          });
       if (!res.ok) throw new Error();
       const data = await res.json();
       setResults(data.candidates || []);
@@ -120,8 +129,8 @@ export default function Page() {
 
   function exportCsv() {
     const rows = [
-      ["name", "location", "languages", "summary", "ashbyUrl", "linkedinUrl"],
-      ...chosen.map((c) => [c.name, c.location, (c.languages || []).join("; "), c.summary, c.ashbyUrl, c.linkedinUrl || ""]),
+      ["name", "location", "languages", "summary", "ashbyUrl", "linkedinUrl", "sourceUrl"],
+      ...chosen.map((c) => [c.name, c.location, (c.languages || []).join("; "), c.summary, c.ashbyUrl || "", c.linkedinUrl || "", c.sourceUrl || ""]),
     ];
     const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
@@ -134,7 +143,13 @@ export default function Page() {
 
   async function copyList() {
     const md = chosen
-      .map((c) => `- **${c.name}** — ${c.location}\n  Ashby: ${c.ashbyUrl}${c.linkedinUrl ? `\n  LinkedIn: ${c.linkedinUrl}` : ""}`)
+      .map((c) => {
+        const lines = [`- **${c.name}**${c.location ? ` — ${c.location}` : ""}`];
+        if (c.ashbyUrl) lines.push(`  Ashby: ${c.ashbyUrl}`);
+        if (c.linkedinUrl) lines.push(`  LinkedIn: ${c.linkedinUrl}`);
+        if (!c.ashbyUrl && !c.linkedinUrl && c.sourceUrl) lines.push(`  Profile: ${c.sourceUrl}`);
+        return lines.join("\n");
+      })
       .join("\n");
     await navigator.clipboard.writeText(md);
     setCopied(true);
@@ -152,6 +167,26 @@ export default function Page() {
         <div className="hero">
           <h1 className="h1">{t.title}</h1>
           <p className="sub">{t.subtitle}</p>
+
+          {/* Two-option search mode toggle */}
+          <div className="mode-toggle" role="tablist">
+            <button
+              role="tab"
+              aria-selected={mode === "internal"}
+              className={mode === "internal" ? "active" : ""}
+              onClick={() => setMode("internal")}
+            >
+              {t.modeInternal}
+            </button>
+            <button
+              role="tab"
+              aria-selected={mode === "online"}
+              className={mode === "online" ? "active" : ""}
+              onClick={() => setMode("online")}
+            >
+              {t.modeOnline}
+            </button>
+          </div>
 
           <div className="searchbox-wrap">
             <textarea
@@ -188,39 +223,44 @@ export default function Page() {
 
           {showFilters && (
             <div className="filters-panel">
-              <div className="field">
-                <label>{t.job}</label>
-                <select value={jobId} onChange={(e) => setJobId(e.target.value)}>
-                  <option value="">{t.allJobs}</option>
-                  {jobs.map((j) => <option key={j.id} value={j.id}>{j.title}</option>)}
-                </select>
-              </div>
+              {/* Pool-only filters — hidden when discovering online */}
+              {mode === "internal" && (
+                <>
+                  <div className="field">
+                    <label>{t.job}</label>
+                    <select value={jobId} onChange={(e) => setJobId(e.target.value)}>
+                      <option value="">{t.allJobs}</option>
+                      {jobs.map((j) => <option key={j.id} value={j.id}>{j.title}</option>)}
+                    </select>
+                  </div>
 
-              <div className="field">
-                <label>Scope</label>
-                <div className="toggle">
-                  <button className={scope === "job" ? "active" : ""} onClick={() => setScope("job")}>{t.scopeJob}</button>
-                  <button className={scope === "pool" ? "active" : ""} onClick={() => setScope("pool")}>{t.scopePool}</button>
-                </div>
-              </div>
+                  <div className="field">
+                    <label>Scope</label>
+                    <div className="toggle">
+                      <button className={scope === "job" ? "active" : ""} onClick={() => setScope("job")}>{t.scopeJob}</button>
+                      <button className={scope === "pool" ? "active" : ""} onClick={() => setScope("pool")}>{t.scopePool}</button>
+                    </div>
+                  </div>
 
-              <div className="field">
-                <label>{t.role}</label>
-                <select value={roleId} onChange={(e) => setRoleId(e.target.value)}>
-                  <option value="">{t.none}</option>
-                  {roles.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
-                </select>
-              </div>
+                  <div className="field">
+                    <label>{t.role}</label>
+                    <select value={roleId} onChange={(e) => setRoleId(e.target.value)}>
+                      <option value="">{t.none}</option>
+                      {roles.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+                    </select>
+                  </div>
 
-              <div className="field">
-                <label>{t.freshness}</label>
-                <select value={months} onChange={(e) => setMonths(Number(e.target.value))}>
-                  <option value={0}>{t.freshnessAny}</option>
-                  <option value={3}>3{t.months}</option>
-                  <option value={6}>6{t.months}</option>
-                  <option value={12}>12{t.months}</option>
-                </select>
-              </div>
+                  <div className="field">
+                    <label>{t.freshness}</label>
+                    <select value={months} onChange={(e) => setMonths(Number(e.target.value))}>
+                      <option value={0}>{t.freshnessAny}</option>
+                      <option value={3}>3{t.months}</option>
+                      <option value={6}>6{t.months}</option>
+                      <option value={12}>12{t.months}</option>
+                    </select>
+                  </div>
+                </>
+              )}
 
               <div className="field">
                 <label>{t.limit}</label>
@@ -289,19 +329,24 @@ export default function Page() {
                     </div>
                     <div className="card-body">
                       <h3 className="card-name">{c.name}</h3>
-                      <p className="card-sub">
-                        <span>{c.location}</span>
-                        {sen && <span className={`badge badge-${sen}`}>{senLabel[sen]}</span>}
-                      </p>
+                      {(c.location || sen) && (
+                        <p className="card-sub">
+                          {c.location && <span>{c.location}</span>}
+                          {sen && <span className={`badge badge-${sen}`}>{senLabel[sen]}</span>}
+                        </p>
+                      )}
                       {c.languages?.length > 0 && (
                         <div className="pills">
                           {c.languages.map((l) => <span key={l} className="pill">{l}</span>)}
                         </div>
                       )}
-                      <p className="summary">{c.summary}</p>
+                      {c.summary && <p className="summary">{c.summary}</p>}
                       <div className="links">
-                        <a className="link-btn" href={c.ashbyUrl} target="_blank" rel="noreferrer">{t.openAshby}</a>
+                        {c.ashbyUrl && <a className="link-btn" href={c.ashbyUrl} target="_blank" rel="noreferrer">{t.openAshby}</a>}
                         {c.linkedinUrl && <a className="link-btn" href={c.linkedinUrl} target="_blank" rel="noreferrer">{t.viewLinkedin}</a>}
+                        {!c.ashbyUrl && !c.linkedinUrl && c.sourceUrl && (
+                          <a className="link-btn" href={c.sourceUrl} target="_blank" rel="noreferrer">{t.viewProfile}</a>
+                        )}
                       </div>
                     </div>
                   </div>
