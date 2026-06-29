@@ -33,3 +33,11 @@ export function deliverCallback(requestId: string, ids: string[]): boolean {
   resolver(ids);
   return true;
 }
+
+/** Fallback for when the callback arrives without a requestId: deliver to the
+ *  oldest waiting search. Safe for a single-user demo (one search in flight). */
+export function deliverToOldest(ids: string[]): boolean {
+  const first = pending.keys().next();
+  if (first.done) return false;
+  return deliverCallback(first.value, ids);
+}

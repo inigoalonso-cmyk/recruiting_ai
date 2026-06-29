@@ -76,7 +76,7 @@ export async function POST(req: Request) {
 
   // 3b. Delegate to the HappyRobot workflow, then wait for its callback.
   const requestId = randomUUID();
-  const callbackUrl = `${baseUrl(req)}/api/workflow-callback`;
+  const callbackUrl = `${baseUrl(req)}/api/workflow-callback?rid=${requestId}`;
   const wait = waitForCallback(requestId, CALLBACK_TIMEOUT_MS);
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };

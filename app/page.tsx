@@ -51,6 +51,25 @@ function seniority(summary: string): Seniority | null {
   return null;
 }
 
+/** Pull the skills/experience phrases out of the summary, dropping the
+ *  seniority/years prefix, so we can show them as a checklist. */
+function skillsOf(summary: string): string[] {
+  return summary
+    .replace(/—/g, ",")
+    .split(/[,;]/)
+    .map((p) => p.trim().replace(/\.$/, ""))
+    .filter(Boolean)
+    .filter((p) => !/\byrs\b|años/i.test(p))
+    .filter((p) => !/\bprofile\b|\bperfil\b/i.test(p))
+    .filter((p) => !["lead", "senior", "mid-level", "mid", "junior"].includes(p.toLowerCase()));
+}
+
+/** Build the per-candidate checklist: languages first, then skills. Deduped + capped. */
+function checklistItems(c: { languages: string[]; summary: string }): string[] {
+  const items = [...(c.languages || []), ...skillsOf(c.summary || "")];
+  return Array.from(new Set(items)).slice(0, 8);
+}
+
 export default function Page() {
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<Mode>("internal");
@@ -321,6 +340,7 @@ export default function Page() {
             <div className="results">
               {results.map((c, i) => {
                 const sen = seniority(c.summary);
+                const items = checklistItems(c);
                 return (
                   <div key={c.id} className="card" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
                     <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggle(c.id)} aria-label={c.name} />
@@ -335,12 +355,18 @@ export default function Page() {
                           {sen && <span className={`badge badge-${sen}`}>{senLabel[sen]}</span>}
                         </p>
                       )}
-                      {c.languages?.length > 0 && (
-                        <div className="pills">
-                          {c.languages.map((l) => <span key={l} className="pill">{l}</span>)}
-                        </div>
+                      {items.length > 0 && (
+                        <ul className="checklist">
+                          {items.map((it, idx) => (
+                            <li key={idx}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                              <span>{it}</span>
+                            </li>
+                          ))}
+                        </ul>
                       )}
-                      {c.summary && <p className="summary">{c.summary}</p>}
                       <div className="links">
                         {c.ashbyUrl && <a className="link-btn" href={c.ashbyUrl} target="_blank" rel="noreferrer">{t.openAshby}</a>}
                         {c.linkedinUrl && <a className="link-btn" href={c.linkedinUrl} target="_blank" rel="noreferrer">{t.viewLinkedin}</a>}

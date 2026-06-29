@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { deliverCallback } from "@/lib/pending";
+import { deliverCallback, deliverToOldest } from "@/lib/pending";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -7,16 +7,18 @@ export const dynamic = "force-dynamic";
 /**
  * The HappyRobot workflow's final POST node calls this when it finishes:
  *   { "requestId": "...", "selected_ids": [...] }
+ * requestId may also arrive as a `?rid=` query param (more reliable than the body).
  * selected_ids may arrive as an array, a JSON string, or { selected_ids: [...] }.
  */
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
-  const requestId = String(body?.requestId || "");
-  if (!requestId) return NextResponse.json({ error: "missing requestId" }, { status: 400 });
+  const ridFromQuery = new URL(req.url).searchParams.get("rid") || "";
+  const requestId = String(body?.requestId || ridFromQuery || "");
 
   const ids = coerceIds(body?.selected_ids);
-  const delivered = deliverCallback(requestId, ids);
-  console.log(`[callback] ${requestId}: ${ids.length} ids, delivered=${delivered}`);
+  // Match by requestId; if none came through, deliver to the single waiting search.
+  const delivered = requestId ? deliverCallback(requestId, ids) : deliverToOldest(ids);
+  console.log(`[callback] id=${requestId || "(none)"}: ${ids.length} ids, delivered=${delivered}`);
   return NextResponse.json({ ok: delivered });
 }
 

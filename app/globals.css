@@ -198,6 +198,12 @@ select option { background: var(--ink); color: var(--text); }
 }
 
 .card .summary { font-size: 14px; margin: 0 0 14px; color: var(--muted-strong); }
+
+/* Per-candidate checklist of attributes (languages + skills) */
+.checklist { list-style: none; margin: 8px 0 14px; padding: 0; display: grid; gap: 6px; }
+.checklist li { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text); }
+.checklist li svg { color: #34d399; flex-shrink: 0; }
+.checklist li span { line-height: 1.35; }
 .card .links { display: flex; gap: 10px; flex-wrap: wrap; }
 .link-btn {
   display: inline-flex; align-items: center;
